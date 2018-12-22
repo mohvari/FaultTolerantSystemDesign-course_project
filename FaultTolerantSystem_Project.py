@@ -17,6 +17,14 @@ class Simulation:
             lcm = int (lcm * taskSetOnProcessor[i].period/gcd(lcm, taskSetOnProcessor[i].period))
         self.lcmOfPeriods = lcm
 
+    def find_VD(self):
+        for task in self.modifiedTaskSet:
+            if task.criticality == True : # Criticality Hi = True
+                task.virtualDeadline = task.arivalTime + task.deadline - task.worstCase
+            else:
+                task.virtualDeadline = task.arivalTime + task.deadline
+        return
+
     def make_Fault(self):
         return(randGen.exponential(1 / self.landa) )
         
