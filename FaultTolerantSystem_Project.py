@@ -1,5 +1,6 @@
 #IN THE NAME OF ALLAAH
 import numpy.random as randGen
+from math import gcd
 
 class CPU:
     def __init__(self):
@@ -7,7 +8,15 @@ class CPU:
 class Simulation:
     def __init__(self, landa):
         self.numOfFaults = 0
-        
+        self.taskSet = []
+        self.lcmOfPeriods = find_lcm(self.taskSet)
+
+    def find_lcm(self, taskSetOnProcessor):
+        lcm = taskSetOnProcessor[0].period
+        for i in range(1, len(taskSetOnProcessor)):
+            lcm = int (lcm * taskSetOnProcessor[i].period/gcd(lcm, taskSetOnProcessor[i].period))
+        self.lcmOfPeriods = lcm
+
     def make_Fault(self):
         return(randGen.exponential(1 / self.landa) )
         
@@ -17,7 +26,11 @@ class Simulation:
         
         if self.nextEvent == "Fault":
             self.numOfFaults += 1
-        
+    def find_utiilization(self, taskSetOnProcessor):
+        usage = 0
+        for task in taskSetOnProcessor:
+            usage += (taskSetOnProcessor.worstCase * (2 * taskSetOnProcessor.numOfFaults + 1) )/ taskSetOnProcessor.period
+        return usage
         
 class Task:
     def __init__(self, period, deadline, numOfFaults, criticality, worstCase):
