@@ -120,6 +120,7 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
         self.uAverage = self.uStarMin - self.errorVal # set uAverage minimum, first of all.
         self.uLow = 0
         self.uHigh = 0
+        return
     
     def empty_taskList(self):
         self.taskList[:] = []
@@ -150,7 +151,7 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
                 self.taskListMade = False
                 return
             elif( (self.uStarMin <= self.uAverage) and (self.uAverage <= self.uStarMax) ):
-                if ( ((self.uLow > 0.99) or (self.uHigh > 0.99)) or (self.Is_same_critical) ): # TODO: AND or OR?
+                if ( ((self.uLow > 0.99) or (self.uHigh > 0.99)) or (self.Is_same_critical()) ): # TODO: AND or OR?
                     self.empty_taskList()
                     self.taskListMade = False
                     return
@@ -176,7 +177,7 @@ if __name__ == "__main__":
     uStar = 0.95
     errorVal = 0.005
     taskNumShouldBe = 200
-    sizeImportance = True
+    sizeImportance = False
     myTaskSet = TaskSet(numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe)
     myTaskSet.tasksLog()
     print(myTaskSet.uAverage)
