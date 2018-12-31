@@ -1,0 +1,65 @@
+task 1 is:
+taskName = 1
+worsCaseLow = 9
+worsCaseHigh = 27
+T = 108
+D = 108
+criticality = High
+numOfFaults = 1
+numOfExecution = 3
+releaseTime = 0
+delta = 27
+VD = 81
+
+task 2 is:
+taskName = 2
+worsCaseLow = 9
+worsCaseHigh = 9
+T = 45
+D = 45
+criticality = Low
+numOfFaults = 0
+numOfExecution = 1
+releaseTime = 0
+delta = 0
+VD = 45
+
+task 3 is:
+taskName = 3
+worsCaseLow = 6
+worsCaseHigh = 6
+T = 176
+D = 176
+criticality = Low
+numOfFaults = 0
+numOfExecution = 1
+releaseTime = 0
+delta = 0
+VD = 176
+
+task 4 is:
+taskName = 4
+worsCaseLow = 3
+worsCaseHigh = 30
+T = 111
+D = 111
+criticality = High
+numOfFaults = 1
+numOfExecution = 3
+releaseTime = 0
+delta = 30
+VD = 81
+
+task 5 is:
+taskName = 5
+worsCaseLow = 3
+worsCaseHigh = 27
+T = 139
+D = 139
+criticality = High
+numOfFaults = 1
+numOfExecution = 3
+releaseTime = 0
+delta = 27
+VD = 112
+

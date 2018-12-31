@@ -71,17 +71,17 @@ class Task:
         ptTaskList = []
         if self.criticality == 'High':
             for j in range(1, self.numOfExecution + 1):
-                possibleRVD = ( (self.rDeadline * j) / self.numOfExecution ) - self.worstCaseHigh
+                worstCaseLow = self.worstCaseLow
+                worstCaseHigh = self.worstCaseHigh / self.numOfExecution
+                possibleRVD = ( (self.rDeadline * j) / self.numOfExecution ) - worstCaseHigh
                 vD = self.releaseTime + max(0, possibleRVD)
                 name = self.taskName + "," + str(j)
                 period = self.period
                 rDeadline = self.rDeadline
-                worstCaseLow = self.worstCaseLow
-                worstcaseHigh = self.worstCaseHigh / self.numOfExecution
                 criticality = self.criticality
                 numOfFaults = self.numOfFaults
                 numOfExecution = self.numOfExecution
-                newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstcaseHigh, name, None, vD) # TODO: Add ReleaseTime
+                newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, None, vD) # TODO: Add ReleaseTime
                 ptTaskList.append(newTask)
         else:
             vD = self.virtualDeadline
@@ -89,11 +89,11 @@ class Task:
             period = self.period
             rDeadline = self.rDeadline
             worstCaseLow = self.worstCaseLow
-            worstcaseHigh = self.worstCaseHigh
+            worstCaseHigh = self.worstCaseHigh
             criticality = self.criticality
             numOfFaults = self.numOfFaults
             numOfExecution = self.numOfExecution
-            newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstcaseHigh, name, None, vD) # TODO: Add ReleaseTime
+            newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, None, vD) # TODO: Add ReleaseTime
             ptTaskList.append(newTask)
         return ptTaskList
 
@@ -113,7 +113,10 @@ class Task:
 
 class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end of the work! 
     def __init__(self, numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe):
+        self.logBefore = "LogSet.txt"
+        self.logAfter = "LogSetPrime.txt"
         self.taskList = []
+        self.modifiedTaskList = []
         self.numOfFaults = numOfFaults
         self.uStar = uStar
         self.errorVal = errorVal
@@ -218,16 +221,38 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
                 self.taskListMade = True
                 return
 
-    def tasksLog(self):
-        f = open("Log.txt", "+a")
-        print (self.uAverage)
-        self.set_usage()
-        print (self.uAverage)
-        for i in range(self.taskNum):
-            f.write("task " + str(i+1) + " is:\n")
-            self.taskList[i].log(f)
-            f.write("\n")
-        f.close()
+    def pt_preprocess(self):
+        self.modifiedTaskList [:] = []
+        for i in range (self.taskNum):
+            self.modifiedTaskList += self.taskList[i].preprocessPT()
+        return
+    
+    def empty_log(self):
+        g = open(self.logBefore, "+w")
+        g.close()
+        h = open(self.logAfter, "+w")
+        h.close()
+        return
+        
+    def tasksLog(self, beforeAfter):
+        if beforeAfter == False:
+            f = open(self.logBefore, "+a")
+            # print (self.uAverage)
+            # self.set_usage()
+            # print (self.uAverage)
+            for i in range(self.taskNum):
+                f.write("task " + str(i+1) + " is:\n")
+                self.taskList[i].log(f)
+                f.write("\n")
+            f.close()
+        else:
+            self.pt_preprocess()
+            f = open(self.logAfter, "+a")
+            for i in range(len(self.modifiedTaskList)):
+                f.write("modified Task " + self.modifiedTaskList[i].taskName + "is:\n")
+                self.modifiedTaskList[i].log(f)
+                f.write("\n")
+            f.close()
         return
 
 
@@ -244,5 +269,7 @@ if __name__ == "__main__":
     taskNumShouldBe = 200
     sizeImportance = False
     myTaskSet = TaskSet(numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe)
-    myTaskSet.tasksLog()
+    myTaskSet.empty_log()
+    myTaskSet.tasksLog(False)
+    myTaskSet.tasksLog(True)
     print(myTaskSet.uAverage)
