@@ -42,20 +42,22 @@ from math import gcd
 #         return usage
         
 class Task:
-    def __init__(self, period, deadline, numOfFaults, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+    def __init__(self, period, deadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
         self.taskName = taskName
         self.period = period
         self.deadline = deadline
         self.criticality = criticality
         self.worstCaseLow = worstCaseLow
         self.worstCaseHigh = worstCaseHigh
+        self.numOfFaults = numOfFaults
+        self.numOfExecution = numOfExecution
         if self.criticality == 'High':
-            self.numOfFaults = numOfFaults
+            # self.numOfFaults = numOfFaults
             self.delta = self.worstCaseHigh
         else:
-            self.numOfFaults = 0
+            # self.numOfFaults = 0
             self.delta = 0
-        self.numOfExecution = 2 * self.numOfFaults + 1
+        # self.numOfExecution = 2 * self.numOfFaults + 1
         self.releaseTime = releaseTime
         if virtualDeadline == None :
             self.virtualDeadline = self.releaseTime + self.deadline - self.delta
@@ -131,14 +133,18 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
             worstCaseLow = randGen.randint(1, self.cLoMax) # TODO: exclusive or inclusive?
             if randGen.random() < self.pH: # criticality of task is High
                 criticality = 'High'
+                numOfFaults = self.numOfFaults
                 worstCaseHigh = randGen.randint(worstCaseLow, self.rH * worstCaseLow + 1)
             else: #  criticality of task is Low
                 criticality = 'Low'
+                numOfFaults = 0
                 worstCaseHigh = worstCaseLow
-            period = randGen.randint(worstCaseHigh, self.tMax + 1)
-            deadline = period
+
+            numOfExecution = (2 * numOfFaults)+ 1
             taskName = str( len(self.taskList) + 1)
-            newTask = Task(period, deadline, self.numOfFaults, criticality, worstCaseLow, worstCaseHigh, taskName)
+            period = randGen.randint(worstCaseHigh * numOfExecution, self.tMax + 1)
+            deadline = period
+            newTask = Task(period, deadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName)
             self.taskList.append(newTask)
             self.taskNum = len(self.taskList)
             return
