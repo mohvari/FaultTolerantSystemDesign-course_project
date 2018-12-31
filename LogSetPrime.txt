@@ -1,143 +1,156 @@
-modified Task 1,1is:
+modified Task 1,1 is:
 taskName = 1,1
-worsCaseLow = 9
-worsCaseHigh = 9.0
-T = 108
-D = 108
+worsCaseLow = 4
+worsCaseHigh = 12
+T = 111
+D = 111
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 9.0
-VD = 27.0
+delta = 12
+VD = 25.0
 
-modified Task 1,2is:
+modified Task 1,2 is:
 taskName = 1,2
-worsCaseLow = 9
-worsCaseHigh = 9.0
-T = 108
-D = 108
+worsCaseLow = 4
+worsCaseHigh = 12
+T = 111
+D = 111
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 9.0
-VD = 63.0
+delta = 12
+VD = 62.0
 
-modified Task 1,3is:
+modified Task 1,3 is:
 taskName = 1,3
-worsCaseLow = 9
-worsCaseHigh = 9.0
-T = 108
-D = 108
+worsCaseLow = 4
+worsCaseHigh = 12
+T = 111
+D = 111
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 9.0
+delta = 12
 VD = 99.0
 
-modified Task 2,1is:
+modified Task 2,1 is:
 taskName = 2,1
-worsCaseLow = 9
-worsCaseHigh = 9
-T = 45
-D = 45
+worsCaseLow = 1
+worsCaseHigh = 1
+T = 40
+D = 40
 criticality = Low
 numOfFaults = 0
 numOfExecution = 1
 releaseTime = 0
 delta = 0
-VD = 45
+VD = 40
 
-modified Task 3,1is:
+modified Task 3,1 is:
 taskName = 3,1
-worsCaseLow = 6
-worsCaseHigh = 6
-T = 176
-D = 176
+worsCaseLow = 2
+worsCaseHigh = 2
+T = 79
+D = 79
 criticality = Low
 numOfFaults = 0
 numOfExecution = 1
 releaseTime = 0
 delta = 0
-VD = 176
+VD = 79
 
-modified Task 4,1is:
+modified Task 4,1 is:
 taskName = 4,1
-worsCaseLow = 3
-worsCaseHigh = 10.0
-T = 111
-D = 111
+worsCaseLow = 8
+worsCaseHigh = 12
+T = 158
+D = 158
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 10.0
-VD = 27.0
+delta = 12
+VD = 40.666666666666664
 
-modified Task 4,2is:
+modified Task 4,2 is:
 taskName = 4,2
-worsCaseLow = 3
-worsCaseHigh = 10.0
-T = 111
-D = 111
+worsCaseLow = 8
+worsCaseHigh = 12
+T = 158
+D = 158
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 10.0
-VD = 64.0
+delta = 12
+VD = 93.33333333333333
 
-modified Task 4,3is:
+modified Task 4,3 is:
 taskName = 4,3
-worsCaseLow = 3
-worsCaseHigh = 10.0
-T = 111
-D = 111
+worsCaseLow = 8
+worsCaseHigh = 12
+T = 158
+D = 158
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 10.0
-VD = 101.0
+delta = 12
+VD = 146.0
 
-modified Task 5,1is:
+modified Task 5,1 is:
 taskName = 5,1
-worsCaseLow = 3
-worsCaseHigh = 9.0
-T = 139
-D = 139
-criticality = High
-numOfFaults = 1
-numOfExecution = 3
+worsCaseLow = 2
+worsCaseHigh = 2
+T = 157
+D = 157
+criticality = Low
+numOfFaults = 0
+numOfExecution = 1
 releaseTime = 0
-delta = 9.0
-VD = 37.333333333333336
+delta = 0
+VD = 157
 
-modified Task 5,2is:
-taskName = 5,2
-worsCaseLow = 3
-worsCaseHigh = 9.0
-T = 139
-D = 139
+modified Task 6,1 is:
+taskName = 6,1
+worsCaseLow = 4
+worsCaseHigh = 15
+T = 133
+D = 133
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 9.0
-VD = 83.66666666666667
+delta = 15
+VD = 29.333333333333336
 
-modified Task 5,3is:
-taskName = 5,3
-worsCaseLow = 3
-worsCaseHigh = 9.0
-T = 139
-D = 139
+modified Task 6,2 is:
+taskName = 6,2
+worsCaseLow = 4
+worsCaseHigh = 15
+T = 133
+D = 133
 criticality = High
 numOfFaults = 1
 numOfExecution = 3
 releaseTime = 0
-delta = 9.0
-VD = 130.0
+delta = 15
+VD = 73.66666666666667
+
+modified Task 6,3 is:
+taskName = 6,3
+worsCaseLow = 4
+worsCaseHigh = 15
+T = 133
+D = 133
+criticality = High
+numOfFaults = 1
+numOfExecution = 3
+releaseTime = 0
+delta = 15
+VD = 118.0
 

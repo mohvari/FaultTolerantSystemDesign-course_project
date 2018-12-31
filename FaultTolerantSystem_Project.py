@@ -12,12 +12,6 @@ from math import gcd
 #         self.taskSet = []
 #         self.lcmOfPeriods = find_lcm(self.taskSet)
 
-#     def find_lcm(self, taskSetOnProcessor):
-#         lcm = taskSetOnProcessor[0].period
-#         for i in range(1, len(taskSetOnProcessor)):
-#             lcm = int (lcm * taskSetOnProcessor[i].period/gcd(lcm, taskSetOnProcessor[i].period))
-#         self.lcmOfPeriods = lcm
-
 #     def find_VD(self):
 #         for task in self.modifiedTaskSet:
 #             if task.criticality == True : # Criticality Hi = True
@@ -72,7 +66,7 @@ class Task:
         if self.criticality == 'High':
             for j in range(1, self.numOfExecution + 1):
                 worstCaseLow = self.worstCaseLow
-                worstCaseHigh = self.worstCaseHigh / self.numOfExecution
+                worstCaseHigh = int( self.worstCaseHigh / self.numOfExecution )
                 possibleRVD = ( (self.rDeadline * j) / self.numOfExecution ) - worstCaseHigh
                 vD = self.releaseTime + max(0, possibleRVD)
                 name = self.taskName + "," + str(j)
@@ -133,10 +127,18 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
         self.uAverage = self.uStarMin - errorVal # set uAverage minimum, first of all.
         self.uLow = 0
         self.uHigh = 0
+        self.H = 0
 
         while (self.taskListMade == False):
             self.make_task_set()
-        
+
+    def find_lcm(self):
+        lcm = self.taskList[0].period
+        for i in range(1, len(self.taskList)):
+            lcm = int( lcm * self.taskList[i].period / gcd(lcm, self.taskList[i].period) )
+        self.H = lcm
+        return
+
     def set_uLow(self):
         self.uLow = 0
         for i in range(self.taskNum):
@@ -237,19 +239,21 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
     def tasksLog(self, beforeAfter):
         if beforeAfter == False:
             f = open(self.logBefore, "+a")
+            self.find_lcm() # TODO: Should change 
             # print (self.uAverage)
             # self.set_usage()
             # print (self.uAverage)
+            f.write("H = " + str(self.H) + "\n")
             for i in range(self.taskNum):
                 f.write("task " + str(i+1) + " is:\n")
                 self.taskList[i].log(f)
                 f.write("\n")
             f.close()
         else:
-            self.pt_preprocess()
+            self.pt_preprocess() # TODO: Should change
             f = open(self.logAfter, "+a")
             for i in range(len(self.modifiedTaskList)):
-                f.write("modified Task " + self.modifiedTaskList[i].taskName + "is:\n")
+                f.write("modified Task " + self.modifiedTaskList[i].taskName + " is:\n")
                 self.modifiedTaskList[i].log(f)
                 f.write("\n")
             f.close()
