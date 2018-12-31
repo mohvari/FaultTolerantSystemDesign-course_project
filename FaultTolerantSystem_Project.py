@@ -42,7 +42,8 @@ from math import gcd
 #         return usage
         
 class Task:
-    def __init__(self, period, deadline, numOfFaults, criticality, worstCaseLow, worstCaseHigh):
+    def __init__(self, period, deadline, numOfFaults, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+        self.taskName = taskName
         self.period = period
         self.deadline = deadline
         self.criticality = criticality
@@ -50,11 +51,19 @@ class Task:
         self.worstCaseHigh = worstCaseHigh
         if self.criticality == 'High':
             self.numOfFaults = numOfFaults
+            self.delta = self.worstCaseHigh
         else:
             self.numOfFaults = 0
+            self.delta = 0
         self.numOfExecution = 2 * self.numOfFaults + 1
+        self.releaseTime = releaseTime
+        if virtualDeadline == None :
+            self.virtualDeadline = self.releaseTime + self.deadline - self.delta
+        else:
+            self.virtualDeadline = virtualDeadline
 
     def log(self):
+        print ("taskName = ", self.taskName)
         print ("worsCaseLow = ", self.worstCaseLow)
         print ("worsCaseHigh = ", self.worstCaseHigh)
         print ("T = ", self.period)
@@ -62,7 +71,18 @@ class Task:
         print ("criticality = ", self.criticality)
         print ("numOfFaults = ", self.numOfFaults)
         print ("numOfExecution = ", self.numOfExecution)
+        print ("releaseTime = ", self.releaseTime)
+        print ("delta = ", self.delta)
+        print ("VD = ", self.virtualDeadline)
         return
+    
+    def preprocessPT(self):
+        ptTaskList = []
+        if self.criticality == 'High':
+            for j in range(self.numOfExecution):
+                possibleRVD = ( (self.deadline * j) / self.numOfExecution ) - self.worstCaseHigh
+                vD = self.releaseTime + max(0, possibleRVD)
+                newTask = Task()
 
 class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end of the work! 
     def __init__(self, numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe):
@@ -117,7 +137,8 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
                 worstCaseHigh = worstCaseLow
             period = randGen.randint(worstCaseHigh, self.tMax + 1)
             deadline = period
-            newTask = Task(period, deadline, self.numOfFaults, criticality, worstCaseLow, worstCaseHigh)
+            taskName = str( len(self.taskList) + 1)
+            newTask = Task(period, deadline, self.numOfFaults, criticality, worstCaseLow, worstCaseHigh, taskName)
             self.taskList.append(newTask)
             self.taskNum = len(self.taskList)
             return
