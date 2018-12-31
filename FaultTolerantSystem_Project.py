@@ -42,10 +42,10 @@ from math import gcd
 #         return usage
         
 class Task:
-    def __init__(self, period, deadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+    def __init__(self, period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
         self.taskName = taskName
         self.period = period
-        self.deadline = deadline
+        self.rDeadline = rDeadline
         self.criticality = criticality
         self.worstCaseLow = worstCaseLow
         self.worstCaseHigh = worstCaseHigh
@@ -60,31 +60,53 @@ class Task:
         # self.numOfExecution = 2 * self.numOfFaults + 1
         self.releaseTime = releaseTime
         if virtualDeadline == None :
-            self.virtualDeadline = self.releaseTime + self.deadline - self.delta
+            self.virtualDeadline = self.releaseTime + self.rDeadline - self.delta
         else:
             self.virtualDeadline = virtualDeadline
 
-    def log(self):
-        print ("taskName = ", self.taskName)
-        print ("worsCaseLow = ", self.worstCaseLow)
-        print ("worsCaseHigh = ", self.worstCaseHigh)
-        print ("T = ", self.period)
-        print ("D = ", self.deadline)
-        print ("criticality = ", self.criticality)
-        print ("numOfFaults = ", self.numOfFaults)
-        print ("numOfExecution = ", self.numOfExecution)
-        print ("releaseTime = ", self.releaseTime)
-        print ("delta = ", self.delta)
-        print ("VD = ", self.virtualDeadline)
-        return
-    
     def preprocessPT(self):
         ptTaskList = []
         if self.criticality == 'High':
-            for j in range(self.numOfExecution):
-                possibleRVD = ( (self.deadline * j) / self.numOfExecution ) - self.worstCaseHigh
+            for j in range(1, self.numOfExecution + 1):
+                possibleRVD = ( (self.rDeadline * j) / self.numOfExecution ) - self.worstCaseHigh
                 vD = self.releaseTime + max(0, possibleRVD)
-                newTask = Task()
+                name = self.taskName + "," + str(j)
+                period = self.period
+                rDeadline = self.rDeadline
+                worstCaseLow = self.worstCaseLow
+                worstcaseHigh = self.worstCaseHigh / self.numOfExecution
+                criticality = self.criticality
+                numOfFaults = self.numOfFaults
+                numOfExecution = self.numOfExecution
+                newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstcaseHigh, name, None, vD) # TODO: Add ReleaseTime
+                ptTaskList.append(newTask)
+        else:
+            vD = self.virtualDeadline
+            name = self.taskName + ",1"
+            period = self.period
+            rDeadline = self.rDeadline
+            worstCaseLow = self.worstCaseLow
+            worstcaseHigh = self.worstCaseHigh
+            criticality = self.criticality
+            numOfFaults = self.numOfFaults
+            numOfExecution = self.numOfExecution
+            newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstcaseHigh, name, None, vD) # TODO: Add ReleaseTime
+            ptTaskList.append(newTask)
+        return ptTaskList
+
+    def log(self):
+            print ("taskName = ", self.taskName)
+            print ("worsCaseLow = ", self.worstCaseLow)
+            print ("worsCaseHigh = ", self.worstCaseHigh)
+            print ("T = ", self.period)
+            print ("D = ", self.rDeadline)
+            print ("criticality = ", self.criticality)
+            print ("numOfFaults = ", self.numOfFaults)
+            print ("numOfExecution = ", self.numOfExecution)
+            print ("releaseTime = ", self.releaseTime)
+            print ("delta = ", self.delta)
+            print ("VD = ", self.virtualDeadline)
+            return
 
 class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end of the work! 
     def __init__(self, numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe):
@@ -142,9 +164,10 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
 
             numOfExecution = (2 * numOfFaults)+ 1
             taskName = str( len(self.taskList) + 1)
-            period = randGen.randint(worstCaseHigh * numOfExecution, self.tMax + 1)
-            deadline = period
-            newTask = Task(period, deadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName)
+            worstCaseHighTotal = worstCaseHigh * numOfExecution
+            period = randGen.randint(worstCaseHighTotal, self.tMax + 1)
+            rDeadline = period
+            newTask = Task(period, rDeadline, numOfFaults, numOfExecution, criticality, worstCaseLow, worstCaseHighTotal, taskName) # TODO: Adding ReleaseTime and VirtualDeadline (if Needed).
             self.taskList.append(newTask)
             self.taskNum = len(self.taskList)
             return
