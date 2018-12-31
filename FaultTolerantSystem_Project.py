@@ -58,9 +58,12 @@ class Task:
             # self.numOfFaults = 0
             self.delta = 0
         # self.numOfExecution = 2 * self.numOfFaults + 1
-        self.releaseTime = releaseTime
+        if releaseTime == None:
+            self.releaseTime = 0
+        else:
+            self.releaseTime = releaseTime
         if virtualDeadline == None :
-            self.virtualDeadline = self.releaseTime + self.rDeadline - self.delta
+            self.virtualDeadline = int(self.releaseTime) + self.rDeadline - self.delta
         else:
             self.virtualDeadline = virtualDeadline
 
@@ -94,18 +97,18 @@ class Task:
             ptTaskList.append(newTask)
         return ptTaskList
 
-    def log(self):
-            print ("taskName = ", self.taskName)
-            print ("worsCaseLow = ", self.worstCaseLow)
-            print ("worsCaseHigh = ", self.worstCaseHigh)
-            print ("T = ", self.period)
-            print ("D = ", self.rDeadline)
-            print ("criticality = ", self.criticality)
-            print ("numOfFaults = ", self.numOfFaults)
-            print ("numOfExecution = ", self.numOfExecution)
-            print ("releaseTime = ", self.releaseTime)
-            print ("delta = ", self.delta)
-            print ("VD = ", self.virtualDeadline)
+    def log(self, f):
+            f.write("taskName = " + str(self.taskName) + "\n")
+            f.write("worsCaseLow = " + str(self.worstCaseLow) + "\n")
+            f.write("worsCaseHigh = " + str(self.worstCaseHigh) + "\n")
+            f.write("T = " + str(self.period) + "\n")
+            f.write("D = " + str(self.rDeadline) + "\n")
+            f.write("criticality = " + str(self.criticality) + "\n")
+            f.write("numOfFaults = " + str(self.numOfFaults) + "\n")
+            f.write("numOfExecution = " + str(self.numOfExecution) + "\n")
+            f.write("releaseTime = " + str(self.releaseTime) + "\n")
+            f.write("delta = " + str(self.delta) + "\n")
+            f.write("VD = " + str(self.virtualDeadline) + "\n")
             return
 
 class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end of the work! 
@@ -135,14 +138,14 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
         self.uLow = 0
         for i in range(self.taskNum):
             if self.taskList[i].criticality == 'Low':
-                self.uLow += ( (self.taskList[i].worstCaseLow * self.taskList[i].numOfExecution) / self.taskList[i].period) 
+                self.uLow += (self.taskList[i].worstCaseLow / self.taskList[i].period) 
         return
 
     def set_uHigh(self):
         self.uHigh = 0
         for i in range(self.taskNum):
             if self.taskList[i].criticality == 'High':
-                self.uHigh += ( (self.taskList[i].worstCaseHigh * self.taskList[i].numOfExecution) / self.taskList[i].period)
+                self.uHigh += (self.taskList[i].worstCaseHigh / self.taskList[i].period)
         return
 
     def set_usage(self):# setting self.uAverage, self.uLow, self.uHigh
@@ -216,10 +219,15 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
                 return
 
     def tasksLog(self):
-        print (self.taskListMade)
+        f = open("Log.txt", "+a")
+        print (self.uAverage)
+        self.set_usage()
+        print (self.uAverage)
         for i in range(self.taskNum):
-            print("task ", i+1, "is:")
-            self.taskList[i].log()
+            f.write("task " + str(i+1) + " is:\n")
+            self.taskList[i].log(f)
+            f.write("\n")
+        f.close()
         return
 
 
