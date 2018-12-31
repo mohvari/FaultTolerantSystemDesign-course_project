@@ -45,18 +45,23 @@ class Task:
     def __init__(self, period, deadline, numOfFaults, criticality, worstCaseLow, worstCaseHigh):
         self.period = period
         self.deadline = deadline
-        self.numOfFaults = numOfFaults
         self.criticality = criticality
         self.worstCaseLow = worstCaseLow
         self.worstCaseHigh = worstCaseHigh
+        if self.criticality == 'High':
+            self.numOfFaults = numOfFaults
+        else:
+            self.numOfFaults = 0
+        self.numOfExecution = 2 * self.numOfFaults + 1
 
     def log(self):
-        print ("T = ", self.period)
-        print ("D = ", self.deadline)
-        print ("numOfFaults = ", self.numOfFaults)
-        print ("criticality = ", self.criticality)
         print ("worsCaseLow = ", self.worstCaseLow)
         print ("worsCaseHigh = ", self.worstCaseHigh)
+        print ("T = ", self.period)
+        print ("D = ", self.deadline)
+        print ("criticality = ", self.criticality)
+        print ("numOfFaults = ", self.numOfFaults)
+        print ("numOfExecution = ", self.numOfExecution)
         return
 
 class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end of the work! 
@@ -85,20 +90,21 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
     def set_uLow(self):
         self.uLow = 0
         for i in range(self.taskNum):
-            self.uLow += (self.taskList[i].worstCaseLow / self.taskList[i].period)
+            if self.taskList[i].criticality == 'Low':
+                self.uLow += ( (self.taskList[i].worstCaseLow * self.taskList[i].numOfExecution) / self.taskList[i].period) 
         return
 
     def set_uHigh(self):
         self.uHigh = 0
         for i in range(self.taskNum):
             if self.taskList[i].criticality == 'High':
-                self.uHigh += (self.taskList[i].worstCaseHigh/ self.taskList[i].period)
+                self.uHigh += ( (self.taskList[i].worstCaseHigh * self.taskList[i].numOfExecution) / self.taskList[i].period)
         return
 
     def set_usage(self):# setting self.uAverage, self.uLow, self.uHigh
         self.set_uLow()
         self.set_uHigh()
-        self.uAverage = (self.uHigh + self.uLow) / 2
+        self.uAverage = (self.uHigh + self.uLow) # / 2
         return
 
     def add_task(self):    
@@ -151,7 +157,8 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
                 self.taskListMade = False
                 return
             elif( (self.uStarMin <= self.uAverage) and (self.uAverage <= self.uStarMax) ):
-                if ( ((self.uLow > 0.99) or (self.uHigh > 0.99)) or (self.Is_same_critical()) ): # TODO: AND or OR?
+                # if ( ((self.uLow > 0.99) and (self.uHigh > 0.99)) or (self.Is_same_critical()) ): # TODO: AND or OR?
+                if ( (self.uAverage > 0.99) or (self.Is_same_critical()) ): # TODO: AND or OR?
                     self.empty_taskList()
                     self.taskListMade = False
                     return
