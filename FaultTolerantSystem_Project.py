@@ -167,7 +167,7 @@ class Simulation: # TODO: Rename the class!
             self.VDs.append(self.Qready[i].virtualDeadline)
         if self.cpu.state == 'idle' and len(self.Qready) != 0:
             indexMinVD = argmin(self.VDs)
-
+            
         
         
 
