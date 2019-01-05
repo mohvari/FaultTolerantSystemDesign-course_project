@@ -6,13 +6,39 @@ from numpy import argmin, argmax
 class CPU:
     def __init__(self):
         self.state = 'idle'
+        self.currTask = None
+        self.endOfTask = 0
+        self.currTime = 0
+        self.landa = 10**(-5)
+
+    def make_Fault(self): # TODO: Is it right?
+        return(randGen.exponential(1 / self.landa) )
+
+    def do_task(self, task, currTime):
+        faultTime = self.make_Fault()
+        self.currTask = task
+        self.currTime = currTime
+        if faultTime <= self.currTask.worstCaseHigh:
+            self.currTask.fingerPrint = False
+        else:
+            self.currTask.fingerPrint = True
+        self.endOfTask = self.currTask.worstCaseHigh + self.currTime
+        return
+
     def find_end_of_currentTask(self):
-        pass
-    def subtractTime(self, diffTime):
-        pass
+        return self.endOfTask
+
+    def terminate_task(self):
+        self.currTime = self.endOfTask # TODO: Is it right?
+        return self.currTask
+
+    
         
 class Task:
-    def __init__(self, period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+    def __init__(self, period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, j, k, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+        self.k = k
+        self.j = j
+        self.fingerPrint = None
         self.taskName = taskName
         self.period = period
         self.rDeadline = rDeadline
@@ -41,6 +67,7 @@ class Task:
         ptTaskList = []
         if self.criticality == 'High':
             for j in range(1, self.numOfExecution + 1):
+                k = self.k
                 worstCaseLow = self.worstCaseLow
                 worstCaseHigh = int( self.worstCaseHigh / self.numOfExecution )
                 possibleRVD = ( (self.rDeadline * j) / self.numOfExecution ) - worstCaseHigh
@@ -51,11 +78,13 @@ class Task:
                 criticality = self.criticality
                 numOfTolerance = self.numOfTolerance
                 numOfExecution = self.numOfExecution
-                newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, self.releaseTime, vD) # TODO: Add ReleaseTime
+                newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, j, k, self.releaseTime, vD) # TODO: Add ReleaseTime
                 ptTaskList.append(newTask)
         else:
+            k = self.k
             vD = self.virtualDeadline
             name = self.taskName + ",1"
+            j = self.j
             period = self.period
             rDeadline = self.rDeadline
             worstCaseLow = self.worstCaseLow
@@ -63,12 +92,13 @@ class Task:
             criticality = self.criticality
             numOfTolerance = self.numOfTolerance
             numOfExecution = self.numOfExecution
-            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, None, vD) # TODO: Add ReleaseTime
+            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, k, None, vD) # TODO: Add ReleaseTime
             ptTaskList.append(newTask)
         return ptTaskList
 
     def log(self, f):
             f.write("taskName = " + str(self.taskName) + "\n")
+            f.write("k = " + str(self.k) + "\n")
             f.write("worsCaseLow = " + str(self.worstCaseLow) + "\n")
             f.write("worsCaseHigh = " + str(self.worstCaseHigh) + "\n")
             f.write("T = " + str(self.period) + "\n")
@@ -82,12 +112,11 @@ class Task:
             return
 
 class Simulation: # TODO: Rename the class! 
-    def __init__(self, numOfTolerance, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe):
+    def __init__(self, numOfTolerance, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe, numOfSimulationPeriods):
         self.logBefore = "LogSet.txt"
         self.logAfter = "LogSetPrime.txt"
+        self.numOfSimulationPeriods = numOfSimulationPeriods
         self.taskList = []
-        self.modifiedTaskList = []
-        self.numOfTolerance = numOfTolerance
         self.uStar = uStar
         self.errorVal = errorVal
         self.uStarMin = self.uStar - self.errorVal
@@ -104,38 +133,67 @@ class Simulation: # TODO: Rename the class!
         self.uLow = 0
         self.uHigh = 0
         self.H = 0
-        self.landa = 10**(-5)
         self.numOfFaults = 0
+        self.numOfTolerance = numOfTolerance
+        # End of Initializing
+        self.abstract_make_task_set() # making Tasks
+        self.taskNum = len(self.taskList)
+        self.find_H()
+        self.ENDTIME = self.numOfSimulationPeriods * self.H
+
+        
+    def simulate_EDF(self):
+        pass
+
+    def simulate_EDF_VD(self):
+        pass
+
+    def simulate_Slice_EDF_VD(self):
+        self.modifiedTaskList = []
+        self.pt_preprocess()
+        self.nextReleseTimes = []
+        for i in range(self.taskNum):
+            self.nextReleseTimes.append(self.taskList[i].period)
         self.currentTime = 0
         self.cpu = CPU()
         self.indexOfNextRelease = 0
         self.timeNextEvent = 0
-        self.typeOfNextEvent = "ReleaseTask"
+        self.typeOfNextEvent = ""
+        self.Qready = []
+# While True:
+        self.Qready = self.modifiedTaskList
+        self.VDs = []
+        for i in range(len(self.Qready)):
+            self.VDs.append(self.Qready[i].virtualDeadline)
+        if self.cpu.state == 'idle' and len(self.Qready) != 0:
+            indexMinVD = argmin(self.VDs)
 
-        while (self.taskListMade == False):
-            self.make_task_set()
         
-        self.find_lcm()
-        self.pt_preprocess()
-        self.taskNum = len(self.taskList)
-        self.nextReleseTimes = []
-        for i in range(self.taskNum):
-            self.nextReleseTimes.append(self.taskList[i].period)
         
+
+        
+        
+        
+        
+
     def find_next_event(self): # Output = relativeTime and codeNumber of the next event
         self.indexOfNextRelease = argmin(self.nextReleseTimes)
         timeNextRelease = self.nextReleseTimes[self.indexOfNextRelease]
         timeNextEnd = self.cpu.find_end_of_currentTask()
-        self.timeNextEvent = min(timeNextRelease, timeNextEnd)
-        if timeNextRelease < timeNextEnd:
-            self.typeOfNextEvent = "ReleaseTask"
-        else:
+        self.timeNextEvent = min(timeNextRelease, timeNextEnd, self.ENDTIME)
+        if self.timeNextEvent == self.ENDTIME:
+            self.typeOfNextEvent = "END SIMULATION"
+
+        elif self.timeNextEvent == timeNextEnd:
             self.typeOfNextEvent = "EndTask"
+
+        elif self.timeNextEvent == timeNextRelease:
+            self.typeOfNextEvent = "ReleaseTask"
         return
 
     def release_task(self, releaseTime):
         taskToRelease = self.taskList[self.indexOfNextRelease]
-        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHighTotal, taskToRelease.taskName, releaseTime)
+        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHighTotal, taskToRelease.taskName, taskToRelease.j, taskToRelease.k + 1, releaseTime)
         newModifiedTasks = newTask.preprocessPT()
         self.modifiedTaskList += newModifiedTasks
         return
@@ -153,12 +211,10 @@ class Simulation: # TODO: Rename the class!
 
     def operateNextEvent(self):
         # TODO: find nextEvent, operate task related to the nextEvent
+
         pass
 
-    def make_Fault(self): # TODO: Is it right?
-        return(randGen.exponential(1 / self.landa) )
-
-    def find_lcm(self):
+    def find_H(self):
         lcm = self.taskList[0].period
         for i in range(1, len(self.taskList)):
             lcm = int( lcm * self.taskList[i].period / gcd(lcm, self.taskList[i].period) )
@@ -195,13 +251,13 @@ class Simulation: # TODO: Rename the class!
                 criticality = 'Low'
                 numOfTolerance = 0
                 worstCaseHigh = worstCaseLow
-
+            k = 0
             numOfExecution = (2 * numOfTolerance)+ 1
             taskName = str( len(self.taskList) + 1)
             worstCaseHighTotal = worstCaseHigh * numOfExecution
             period = randGen.randint(worstCaseHighTotal, self.tMax + 1)
             rDeadline = period
-            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHighTotal, taskName) # TODO: Adding ReleaseTime and VirtualDeadline (if Needed).
+            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHighTotal, taskName, k) # TODO: Adding ReleaseTime and VirtualDeadline (if Needed).
             self.taskList.append(newTask)
             self.taskNum = len(self.taskList)
             return
@@ -224,6 +280,11 @@ class Simulation: # TODO: Rename the class!
             if self.taskList[i].criticality != firstCriticality:
                 return False
         return True
+
+    def abstract_make_task_set(self):
+        while (self.taskListMade == False):
+            self.make_task_set()
+        return
 
     def make_task_set(self):
         if self.sizeImportance == True:
@@ -292,7 +353,8 @@ if __name__ == "__main__":
     errorVal = 0.005
     taskNumShouldBe = 200
     sizeImportance = False
-    mySimulation = Simulation(numOfTolerance, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe)
+    numOfSimulationPeriods = 5
+    mySimulation = Simulation(numOfTolerance, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe, numOfSimulationPeriods)
     mySimulation.empty_log()
     mySimulation.tasksLog(False)
     mySimulation.tasksLog(True)
