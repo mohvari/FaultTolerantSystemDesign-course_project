@@ -7,7 +7,7 @@ class CPU:
     def __init__(self):
         self.state = 'idle'
         self.currTask = None
-        self.endOfTask = 0
+        self.endOfTask = 10000
         self.currTime = 0
         self.landa = 10**(-5)
 
@@ -15,6 +15,7 @@ class CPU:
         return(randGen.exponential(1 / self.landa) )
 
     def do_task(self, task, currTime):
+        self.state = 'busy'
         faultTime = self.make_Fault()
         self.currTask = task
         self.currTime = currTime
@@ -30,15 +31,17 @@ class CPU:
 
     def terminate_task(self):
         self.currTime = self.endOfTask # TODO: Is it right?
+        self.state = 'idle'
         return self.currTask
 
     
         
 class Task:
-    def __init__(self, period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, j, k, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+    def __init__(self, period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, taskName, i, j, k, releaseTime=None, virtualDeadline=None): # TODO: remove None 
+        self.i = i
         self.k = k
         self.j = j
-        self.fingerPrint = None
+        self.fingerPrint = False
         self.taskName = taskName
         self.period = period
         self.rDeadline = rDeadline
@@ -78,13 +81,15 @@ class Task:
                 criticality = self.criticality
                 numOfTolerance = self.numOfTolerance
                 numOfExecution = self.numOfExecution
-                newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, j, k, self.releaseTime, vD) # TODO: Add ReleaseTime
+                i = self.i
+                newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, i, j, k, self.releaseTime, vD) # TODO: Add ReleaseTime
                 ptTaskList.append(newTask)
         else:
             k = self.k
             vD = self.virtualDeadline
             name = self.taskName + ",1"
             j = self.j
+            i = self.i
             period = self.period
             rDeadline = self.rDeadline
             worstCaseLow = self.worstCaseLow
@@ -92,7 +97,7 @@ class Task:
             criticality = self.criticality
             numOfTolerance = self.numOfTolerance
             numOfExecution = self.numOfExecution
-            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name, k, None, vD) # TODO: Add ReleaseTime
+            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHigh, name,i, j, k, None, vD) # TODO: Add ReleaseTime
             ptTaskList.append(newTask)
         return ptTaskList
 
@@ -160,21 +165,72 @@ class Simulation: # TODO: Rename the class!
         self.timeNextEvent = 0
         self.typeOfNextEvent = ""
         self.Qready = []
-# While True:
         self.Qready = self.modifiedTaskList
-        self.VDs = []
-        for i in range(len(self.Qready)):
-            self.VDs.append(self.Qready[i].virtualDeadline)
-        if self.cpu.state == 'idle' and len(self.Qready) != 0:
-            indexMinVD = argmin(self.VDs)
-            
+        self.fingerPrints = [[] for i in range(self.taskNum)] # Also remember self.i & self.j & self.k start from 1 not 0.
+        self.correctlyDone = [[] for i in range(self.taskNum)] 
+        while (True):
+            self.find_next_event()
+            self.operate_next_event()
+            self.VDs = []
+            for i in range(len(self.Qready)):
+                self.VDs.append(self.Qready[i].virtualDeadline)
+            if self.cpu.state == 'idle' and len(self.Qready) != 0:
+                indexMinVD = argmin(self.VDs)
+                taskToOperate = self.Qready[indexMinVD]
+                if taskToOperate.criticality == 'High':
+                    for j in range(1, taskToOperate.numOfExecution): # Not numOfExecution + 1  
+                        index = self.find_index_task(taskToOperate.i, j)
+                        self.cpu.do_task(self.Qready[index], self.currentTime)
+                        self.go_until_correct_time()
+                    result = self.find_correctness_operation(taskToOperate.i, taskToOperate.j, taskToOperate.k)
+                    index = self.find_index_task(taskToOperate.i, taskToOperate.numOfExecution)
+                    if result == True:  
+                        del self.Qready[index]
+                        self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = True
+                    else:
+                        self.cpu.do_task(self.Qready[index], self.currentTime)
+                        self.go_until_correct_time()
+                        if self.fingerPrints[taskToOperate.i - 1][taskToOperate.k - 1][taskToOperate.numOfExecution - 1] == True:
+                            self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = True
+                        else:
+                            self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = False
+                else:
+                    index = self.find_index_task(taskToOperate.i, taskToOperate.j)
+                    self.cpu.do_task(self.Qready[index], self.currentTime)
+                    self.go_until_correct_time()
+                    if self.fingerPrints[taskToOperate.i - 1][taskToOperate.k - 1][taskToOperate.numOfExecution - 1] == True:
+                            self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = True
+                    else:
+                        self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = False
+
         
         
 
         
-        
-        
-        
+    def go_until_correct_time(self):
+        self.find_next_event()
+        while self.typeOfNextEvent != "END TASK":
+            self.operate_next_event()
+            self.find_next_event()
+        self.operate_next_event()
+        return
+
+    def find_correctness_operation(self, input_i, input_j, input_k):
+        i = input_i - 1
+        j = input_j - 1
+        k = input_k - 1
+        for h in range(j+1):
+            if self.fingerPrints[i][k][h] != True:
+                return False
+        return True
+
+    def END_SIMULATION(self, type):
+        pass
+
+    def find_index_task(self, i, j):
+        for x in range(len(self.Qready)):
+            if self.Qready[x].i == i and self.Qready[x].j == j:
+                return x
 
     def find_next_event(self): # Output = relativeTime and codeNumber of the next event
         self.indexOfNextRelease = argmin(self.nextReleseTimes)
@@ -185,34 +241,47 @@ class Simulation: # TODO: Rename the class!
             self.typeOfNextEvent = "END SIMULATION"
 
         elif self.timeNextEvent == timeNextEnd:
-            self.typeOfNextEvent = "EndTask"
+            self.typeOfNextEvent = "END TASK"
 
         elif self.timeNextEvent == timeNextRelease:
-            self.typeOfNextEvent = "ReleaseTask"
+            self.typeOfNextEvent = "RELEASE TASK"
         return
 
     def release_task(self, releaseTime):
         taskToRelease = self.taskList[self.indexOfNextRelease]
-        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHighTotal, taskToRelease.taskName, taskToRelease.j, taskToRelease.k + 1, releaseTime)
+        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHighTotal, taskToRelease.taskName,taskToRelease.i, taskToRelease.j, taskToRelease.k + 1, releaseTime)
         newModifiedTasks = newTask.preprocessPT()
+        self.Qready += newModifiedTasks
         self.modifiedTaskList += newModifiedTasks
         return
 
-    def operateNextRelease(self):
-        diffTime = self.timeNextEvent - self.currentTime 
+    def operate_next_release(self):
+        # diffTime = self.timeNextEvent - self.currentTime 
         self.release_task(self.timeNextEvent)
-        self.cpu.subtractTime(diffTime)
+        # self.cpu.subtractTime(diffTime)
         self.nextReleseTimes[self.indexOfNextRelease] += self.taskList[self.indexOfNextRelease].period
-        self.currentTime = self.timeNextEvent
+        # self.currentTime = self.timeNextEvent
         return
 
-    def operateNextEnd(self):
-        pass
+    def operate_next_termination(self):
+        terminatedTask = self.cpu.terminate_task()
+        self.currentTime = self.cpu.currTime
+        i = terminatedTask.i - 1
+        k = terminatedTask.k - 1 
+        # j = terminatedTask.j - 1
+        while len(self.fingerPrints[i]) <  (k + 1):
+            self.fingerPrints[i].append([])
+        self.fingerPrints[i][k].append(terminatedTask.fingerPrint)
+        return
 
-    def operateNextEvent(self):
-        # TODO: find nextEvent, operate task related to the nextEvent
-
-        pass
+    def operate_next_event(self):
+        if self.typeOfNextEvent == "END SIMULATION":
+            self.END_SIMULATION("Slice EDF_VD")
+        elif self.typeOfNextEvent == "END TASK":
+            self.operate_next_termination()
+        elif self.typeOfNextEvent == "RELEASE TASK":
+            self.operate_next_release()
+        return
 
     def find_H(self):
         lcm = self.taskList[0].period
@@ -251,13 +320,15 @@ class Simulation: # TODO: Rename the class!
                 criticality = 'Low'
                 numOfTolerance = 0
                 worstCaseHigh = worstCaseLow
-            k = 0
+            k = 1
             numOfExecution = (2 * numOfTolerance)+ 1
             taskName = str( len(self.taskList) + 1)
+            i = len(self.taskList) + 1
+            j = 1
             worstCaseHighTotal = worstCaseHigh * numOfExecution
             period = randGen.randint(worstCaseHighTotal, self.tMax + 1)
             rDeadline = period
-            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHighTotal, taskName, k) # TODO: Adding ReleaseTime and VirtualDeadline (if Needed).
+            newTask = Task(period, rDeadline, numOfTolerance, numOfExecution, criticality, worstCaseLow, worstCaseHighTotal, taskName, i, j, k) # TODO: Adding ReleaseTime and VirtualDeadline (if Needed).
             self.taskList.append(newTask)
             self.taskNum = len(self.taskList)
             return
