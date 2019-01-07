@@ -2,6 +2,7 @@
 import numpy.random as randGen
 from math import gcd
 from numpy import argmin, argmax
+from copy import deepcopy
 
 class CPU:
     def __init__(self):
@@ -9,7 +10,7 @@ class CPU:
         self.currTask = None
         self.endOfTask = 10000
         self.currTime = 0
-        self.landa = 10**(-5)
+        self.landa = 10**(-1)
 
     def make_Fault(self): # TODO: Is it right?
         return(randGen.exponential(1 / self.landa) )
@@ -32,6 +33,7 @@ class CPU:
     def terminate_task(self):
         self.currTime = self.endOfTask # TODO: Is it right?
         self.state = 'idle'
+        self.endOfTask = 10000
         return self.currTask
 
     
@@ -144,8 +146,9 @@ class Simulation: # TODO: Rename the class!
         self.abstract_make_task_set() # making Tasks
         self.taskNum = len(self.taskList)
         self.find_H()
-        self.ENDTIME = self.numOfSimulationPeriods * self.H
-
+        self.ENDTIME = 100000# TODO: self.numOfSimulationPeriods * self.H
+        self.simulate_Slice_EDF_VD()
+        print(self.Reliablity)
         
     def simulate_EDF(self):
         pass
@@ -155,7 +158,7 @@ class Simulation: # TODO: Rename the class!
 
     def simulate_Slice_EDF_VD(self):
         self.modifiedTaskList = []
-        self.pt_preprocess()
+        self.initial_pt_preprocess()
         self.nextReleseTimes = []
         for i in range(self.taskNum):
             self.nextReleseTimes.append(self.taskList[i].period)
@@ -165,29 +168,43 @@ class Simulation: # TODO: Rename the class!
         self.timeNextEvent = 0
         self.typeOfNextEvent = ""
         self.Qready = []
-        self.Qready = self.modifiedTaskList
+        self.Qready = deepcopy(self.modifiedTaskList)
         self.fingerPrints = [[] for i in range(self.taskNum)] # Also remember self.i & self.j & self.k start from 1 not 0.
-        self.correctlyDone = [[] for i in range(self.taskNum)] 
+        self.correctlyDone = [[] for i in range(self.taskNum)]
+        self.firstTime = True 
         while (True):
-            self.find_next_event()
-            self.operate_next_event()
+            if self.firstTime == False:
+                self.find_next_event()
+                self.operate_next_event()
+            else: 
+                self.firstTime = False
             self.VDs = []
             for i in range(len(self.Qready)):
                 self.VDs.append(self.Qready[i].virtualDeadline)
+  
             if self.cpu.state == 'idle' and len(self.Qready) != 0:
                 indexMinVD = argmin(self.VDs)
                 taskToOperate = self.Qready[indexMinVD]
                 if taskToOperate.criticality == 'High':
                     for j in range(1, taskToOperate.numOfExecution): # Not numOfExecution + 1  
                         index = self.find_index_task(taskToOperate.i, j)
-                        self.cpu.do_task(self.Qready[index], self.currentTime)
+                        if index != None:
+                            self.cpu.do_task(self.Qready[index], self.currentTime)
+                        else:
+                            print("Kill yourself")
                         self.go_until_correct_time()
-                    result = self.find_correctness_operation(taskToOperate.i, taskToOperate.j, taskToOperate.k)
-                    index = self.find_index_task(taskToOperate.i, taskToOperate.numOfExecution)
+                    result = self.find_correctness_operation(taskToOperate.i, taskToOperate.k, taskToOperate.numOfExecution)
                     if result == True:  
+                        index = self.find_index_task(taskToOperate.i, taskToOperate.numOfExecution)
                         del self.Qready[index]
                         self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = True
                     else:
+                        numFor = len(self.Qready)
+                        for y in range(numFor):
+                            for eachTask in self.Qready: # TODO: WTF?
+                                if eachTask.criticality == "Low":
+                                    self.Qready.remove(eachTask)
+                        index = self.find_index_task(taskToOperate.i, taskToOperate.numOfExecution)
                         self.cpu.do_task(self.Qready[index], self.currentTime)
                         self.go_until_correct_time()
                         if self.fingerPrints[taskToOperate.i - 1][taskToOperate.k - 1][taskToOperate.numOfExecution - 1] == True:
@@ -203,10 +220,6 @@ class Simulation: # TODO: Rename the class!
                     else:
                         self.correctlyDone[taskToOperate.i - 1][taskToOperate.k - 1] = False
 
-        
-        
-
-        
     def go_until_correct_time(self):
         self.find_next_event()
         while self.typeOfNextEvent != "END TASK":
@@ -215,22 +228,34 @@ class Simulation: # TODO: Rename the class!
         self.operate_next_event()
         return
 
-    def find_correctness_operation(self, input_i, input_j, input_k):
+    def find_correctness_operation(self, input_i, input_k, numOfExecution):
         i = input_i - 1
-        j = input_j - 1
         k = input_k - 1
-        for h in range(j+1):
-            if self.fingerPrints[i][k][h] != True:
+        num = numOfExecution - 1
+        for x in range(num):
+            if self.fingerPrints[i][k][x] == False:
                 return False
         return True
 
     def END_SIMULATION(self, type):
-        pass
+        M = 0
+        TotalNum = 0
+        for i in self.correctlyDone:
+            TotalNum += len(self.correctlyDone[i])
+        for i in self.correctlyDone:
+            for k in self.correctlyDone[i]:
+                if k == True:
+                    M += 1
+        self.Reliablity = M / TotalNum
+        return
 
     def find_index_task(self, i, j):
         for x in range(len(self.Qready)):
-            if self.Qready[x].i == i and self.Qready[x].j == j:
+            if ( (self.Qready[x].i == i) and (self.Qready[x].j == j) ):
                 return x
+        if True:
+            print("Kill yourself!")
+            return -1
 
     def find_next_event(self): # Output = relativeTime and codeNumber of the next event
         self.indexOfNextRelease = argmin(self.nextReleseTimes)
@@ -247,20 +272,26 @@ class Simulation: # TODO: Rename the class!
             self.typeOfNextEvent = "RELEASE TASK"
         return
 
-    def release_task(self, releaseTime):
+    def find_k_of_task_with_i(self, i):
+        kMax = 0
+        for x in range(len(self.modifiedTaskList)):
+            if self.modifiedTaskList[x].i == i:
+                if kMax < self.modifiedTaskList[x].k:
+                    kMax = self.modifiedTaskList[x].k
+        if kMax == 0:
+            print("Definitly kill yourself.")
+        return kMax
+
+    def operate_next_release(self):
         taskToRelease = self.taskList[self.indexOfNextRelease]
-        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHighTotal, taskToRelease.taskName,taskToRelease.i, taskToRelease.j, taskToRelease.k + 1, releaseTime)
+        k = self.find_k_of_task_with_i(taskToRelease.i)
+        k += 1
+        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHigh, taskToRelease.taskName,taskToRelease.i, taskToRelease.j, k, self.timeNextEvent)
         newModifiedTasks = newTask.preprocessPT()
         self.Qready += newModifiedTasks
         self.modifiedTaskList += newModifiedTasks
-        return
-
-    def operate_next_release(self):
-        # diffTime = self.timeNextEvent - self.currentTime 
-        self.release_task(self.timeNextEvent)
-        # self.cpu.subtractTime(diffTime)
         self.nextReleseTimes[self.indexOfNextRelease] += self.taskList[self.indexOfNextRelease].period
-        # self.currentTime = self.timeNextEvent
+        self.currentTime = self.timeNextEvent
         return
 
     def operate_next_termination(self):
@@ -271,7 +302,10 @@ class Simulation: # TODO: Rename the class!
         # j = terminatedTask.j - 1
         while len(self.fingerPrints[i]) <  (k + 1):
             self.fingerPrints[i].append([])
+            self.correctlyDone[i].append([])
         self.fingerPrints[i][k].append(terminatedTask.fingerPrint)
+        index = self.find_index_task(terminatedTask.i, terminatedTask.j)
+        del self.Qready[index]
         return
 
     def operate_next_event(self):
@@ -381,7 +415,7 @@ class Simulation: # TODO: Rename the class!
                 self.taskListMade = True
                 return
 
-    def pt_preprocess(self):
+    def initial_pt_preprocess(self):
         self.modifiedTaskList [:] = []
         for i in range (self.taskNum):
             self.modifiedTaskList += self.taskList[i].preprocessPT()
@@ -420,7 +454,7 @@ if __name__ == "__main__":
     rH = 4
     cLoMax = 10
     tMax = 200
-    uStar = 0.95
+    uStar = 0.70
     errorVal = 0.005
     taskNumShouldBe = 200
     sizeImportance = False
