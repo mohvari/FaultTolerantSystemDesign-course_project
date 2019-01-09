@@ -305,7 +305,10 @@ class Simulation: # TODO: Rename the class!
             self.correctlyDone[i].append([])
         self.fingerPrints[i][k].append(terminatedTask.fingerPrint)
         index = self.find_index_task(terminatedTask.i, terminatedTask.j)
-        del self.Qready[index]
+        try:
+            del self.Qready[index]
+        except:
+            print("nothing")
         return
 
     def operate_next_event(self):
