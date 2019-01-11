@@ -1,2 +1,4 @@
 FTSD_python-notebook.ipynb
 .ipynb_checkpoints/FTSD_python-notebook-checkpoint.ipynb
+.vscode/launch.json
+test.py
