@@ -167,16 +167,23 @@ class TaskSet: # TODO: Replace U_star with targetAverageUtilization at the end o
 
         
 if __name__ == "__main__":
-    print("This is the main")
-    numOfFaults = 1
-    pH = 0.5
-    rH = 4
-    cLoMax = 10
-    tMax = 200
-    uStar = 0.95
-    errorVal = 0.005
-    taskNumShouldBe = 100
-    sizeImportance = True
-    myTaskSet = TaskSet(numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe)
-    myTaskSet.tasksLog()
-    print(myTaskSet.uAverage)
+    # print("This is the main")
+    # numOfFaults = 1
+    # pH = 0.5
+    # rH = 4
+    # cLoMax = 10
+    # tMax = 200
+    # uStar = 0.95
+    # errorVal = 0.005
+    # taskNumShouldBe = 100
+    # sizeImportance = True
+    # myTaskSet = TaskSet(numOfFaults, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe)
+    # myTaskSet.tasksLog()
+    # print(myTaskSet.uAverage)
+    x = [3 ,4 ,5 ,3,2, 3, 3, 3,3 , 3, 3, 3, 3, 5, 3]
+    print(x)
+    for i in range(15):
+        for eachTask in x: # TODO: WTF?
+          if eachTask == 3:
+               x.remove(eachTask)
+    print(x)
