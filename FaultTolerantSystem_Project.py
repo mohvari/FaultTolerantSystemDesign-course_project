@@ -1,8 +1,9 @@
 #IN THE NAME OF ALLAAH
 import numpy.random as randGen
 from math import gcd
-from numpy import argmin, argmax
+from numpy import argmin, argmax, exp
 from copy import deepcopy
+from datetime import datetime
 
 class CPU:
     def __init__(self):
@@ -150,7 +151,23 @@ class Simulation: # TODO: Rename the class!
         self.taskNum = len(self.taskList)
         self.find_H()
         self.ENDTIME =  10000#self.H # TODO: * self.numOfSimulationPeriods
+
+        startSlice = datetime.now()
         self.simulate_Slice_EDF_VD()
+        endSlice = datetime.now()
+        sliceDuration = endSlice - startSlice
+
+        startEDF = datetime.now()
+        self.simulate_EDF()
+        endEDF = datetime.now()
+        EDFduration = endEDF - startEDF
+
+        startVD= datetime.now()
+        self.simulate_EDF_VD()
+        endVD = datetime.now()
+        VDduration = endVD - startVD
+
+        print(sliceDuration, EDFduration, VDduration)
 
         
     def simulate_EDF(self):
@@ -196,16 +213,17 @@ class Simulation: # TODO: Rename the class!
                 indexMinVD = argmin(self.VDs)
                 taskToOperate = self.Qready[indexMinVD]
                 if taskToOperate.criticality == 'High':
-                    for j in range(1, taskToOperate.numOfExecution): # Not numOfExecution + 1  
-                        # print()
-                        index = self.find_index_task(taskToOperate.i, j, taskToOperate.k)
-                        if index != None:
-                            print(self.Qready[index].i, self.Qready[index].j, self.Qready[index].k, self.currentTime)
-                            self.cpu.do_task(self.Qready[index], self.currentTime)
-                            self.dequeue_from_Qready(index)
-                        else:
-                            print("198............................")
-                        self.go_until_correct_time()
+                    if taskToOperate.j == 1:
+                        for j in range(1, taskToOperate.numOfExecution): # Not numOfExecution + 1  
+                            # print()
+                            index = self.find_index_task(taskToOperate.i, j, taskToOperate.k)
+                            if index != None:
+                                print(self.Qready[index].i, self.Qready[index].j, self.Qready[index].k, self.currentTime)
+                                self.cpu.do_task(self.Qready[index], self.currentTime)
+                                self.dequeue_from_Qready(index)
+                            else:
+                                print("198............................")
+                            self.go_until_correct_time()
                     result = self.find_correctness_operation(taskToOperate.i, taskToOperate.k, taskToOperate.numOfExecution)
                     if result == True:  
                         index = self.find_index_task(taskToOperate.i, taskToOperate.numOfExecution, taskToOperate.k)
@@ -248,11 +266,13 @@ class Simulation: # TODO: Rename the class!
             for y in range(numFor):
                 for m in range(len(self.Qready)):
                     if self.Qready[m].i == listToDrop[n][0] and self.Qready[m].k == listToDrop[n][1]:
-                        self.Qready.remove(self.Qready[m])
+                        if self.Qready[m].j != self.Qready[m].numOfExecution:
+                            self.Qready.remove(self.Qready[m])
         return
 
     def endfunction(self):
-        print(self.Reliablity)
+        print(self.Feasibility)
+        print(self.Reliability)
         self.endLog()
     def dequeue_from_Qready(self, index):
         #self.Qready.remove(self.Qready[index])
@@ -347,7 +367,15 @@ class Simulation: # TODO: Rename the class!
             for k in range(len(self.correctlyDone[i])):
                 if self.correctlyDone[i][k] == True:
                     M += 1
-        self.Reliablity = M / TotalNum
+        self.Feasibility = M / TotalNum
+        F = 1
+        for i in range(len(self.fingerPrints)):
+            for k in range(len(self.fingerPrints[i])):
+                if len(self.fingerPrints[i][k]) > 1:
+                    if self.correctlyDone[i][k] == True:
+                        # TODO: for y in range(self.taskList[i].numOfExecution): /self.taskList[i].numOfExecution
+                        F *= 1 - (1 - exp((self.taskList[i].worstCaseHigh) * (10**(-5)) * -1))
+        self.Reliability = F
         self.ENDBOOL = True
         return
 
@@ -398,7 +426,7 @@ class Simulation: # TODO: Rename the class!
         self.modifiedTaskList += newModifiedTasks
         self.set_correctlydone()
         self.set_fingerprints()
-        self.nextReleseTimes[self.indexOfNextRelease] = self.timeNextEvent + self.taskList[self.indexOfNextRelease].period # TODO: += ?
+        self.nextReleseTimes[self.indexOfNextRelease] = self.timeNextEvent + self.taskList[self.indexOfNextRelease].period 
         self.currentTime = self.timeNextEvent
         return
 
@@ -582,7 +610,7 @@ if __name__ == "__main__":
     rH = 4
     cLoMax = 10
     tMax = 200
-    uStar = 0.70
+    uStar = 0.90
     errorVal = 0.005
     taskNumShouldBe = 200
     sizeImportance = False
