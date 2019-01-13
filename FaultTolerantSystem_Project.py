@@ -153,7 +153,7 @@ class Simulation: # TODO: Rename the class!
         self.ENDTIME =  10000#self.H # TODO: * self.numOfSimulationPeriods
 
         startSlice = datetime.now()
-        # self.simulate_Slice_EDF_VD()
+        self.simulate_Slice_EDF_VD()
         endSlice = datetime.now()
         sliceDuration = endSlice - startSlice
 
@@ -167,11 +167,14 @@ class Simulation: # TODO: Rename the class!
         endVD = datetime.now()
         VDduration = endVD - startVD
 
+        self.EDFendfunction()
+        self.VDendfunction()
+        self.endfunction()
+
         print(sliceDuration, EDFduration, VDduration)
 
         
     def simulate_EDF(self):
-        self.taskListEDF = []
         self.EDFtaskList = deepcopy(self.taskList)
         self.EDFQready = deepcopy(self.EDFtaskList)
         self.EDFnextReleaseTimes = []
@@ -206,7 +209,7 @@ class Simulation: # TODO: Rename the class!
         self.EDFendfunction()
 
     def EDF_END_SIMULATION(self):
-        print("end")
+        print("EDF end")
         M = 0
         TotalNum = 0
         for i in range(len(self.EDFcorrectlyDone)):
@@ -224,7 +227,7 @@ class Simulation: # TODO: Rename the class!
                 if self.EDFcorrectlyDone[iIndex][kIndex] == True:
                     # TODO: for y in range(self.taskList[i].numOfExecution): /self.taskList[i].numOfExecution IS IT RIGHT?
                     F *= 1 - (1 - exp((self.EDFtaskList[y].worstCaseHigh) * (10**(-5)) * -1))
-        self.Reliability = F
+        self.EDF_Reliability = F
         self.EDFendBool = True
         return
 
@@ -277,6 +280,7 @@ class Simulation: # TODO: Rename the class!
         self.EDFnextReleaseTimes[self.EDFindexOfNextRelease] = self.EDFtimeNextEvent + self.EDFtaskList[self.EDFindexOfNextRelease].period 
         self.EDFcurrentTime = self.EDFtimeNextEvent
         return
+
     def EDFoperate_next_termination(self):
         print("next termination")
         terminatedTask = self.EDFcpu.terminate_task()
@@ -299,8 +303,8 @@ class Simulation: # TODO: Rename the class!
         return
 
     def EDFendfunction(self):
-        print(self.EDF_Feasibility)
-        print(self.Reliability)
+        print("EDF_Feasibility = ", self.EDF_Feasibility)
+        print("self.EDF_Reliability", self.EDF_Reliability)
         # self.EDFendLog
         return
 
@@ -363,7 +367,201 @@ class Simulation: # TODO: Rename the class!
         return
 
     def simulate_EDF_VD(self):
-        pass
+        self.VDtaskList = []
+        self.VDtaskList = deepcopy(self.taskList)
+        self.VDnextReleaseTimes = []
+        for i in range(self.taskNum):
+            self.VDnextReleaseTimes.append(self.taskList[i].period)
+        self.VDcurrentTime = 0
+        self.VDcpu = CPU()
+        self.VDindexOfNextRelease = 0
+        self.VDtimeNextEvent = 0
+        self.VDtypeOfNextEvent = ""
+        self.VDQready = []
+        self.VDQready = deepcopy(self.VDtaskList)
+        self.VDcorrectlyDone = [[] for i in range(self.taskNum)]
+        self.VDset_correctlydone()
+        self.VDfirstTime = True 
+        self.VDendBool = False
+        self.VDvirtualDeadlines = []
+        while(True):
+            if self.VDendBool == True:
+                break
+            self.VDvirtualDeadlines[:] = []
+            self.VDclearQready()
+            for i in range(len(self.VDQready)):
+                self.VDvirtualDeadlines.append(self.VDQready[i].virtualDeadline)
+            if self.VDcpu.state == 'idle' and len(self.VDQready) != 0:
+                indexMinVD = argmin(self.VDvirtualDeadlines)
+                taskToOperate = self.VDQready[indexMinVD]
+                index = self.VDfind_index(taskToOperate.i, taskToOperate.k)
+                self.VDcpu.do_task(self.VDQready[index], self.VDcurrentTime)
+                self.VDdequeue_from_Qready(index)
+                self.VDgo_until_correct_time()
+            self.VDfind_next_event()
+            self.VDoperate_next_event()
+        self.VDendfunction()
+
+    def VD_END_SIMULATION(self):
+        print("VD end")
+        M = 0
+        TotalNum = 0
+        for i in range(len(self.VDcorrectlyDone)):
+            TotalNum += len(self.VDcorrectlyDone[i])
+        for i in range(len(self.VDcorrectlyDone)):
+            for k in range(len(self.VDcorrectlyDone[i])):
+                if self.VDcorrectlyDone[i][k] == True:
+                    M += 1
+        self.VD_Feasibility = M / TotalNum
+        F = 1
+        for y in range(len(self.VDtaskList)):
+            if self.VDtaskList[y].criticality == 'High':
+                iIndex = self.VDtaskList[y].i - 1
+                kIndex = self.VDtaskList[y].k - 1
+                if self.VDcorrectlyDone[iIndex][kIndex] == True:
+                    # TODO: for y in range(self.taskList[i].numOfExecution): /self.taskList[i].numOfExecution IS IT RIGHT?
+                    F *= 1 - (1 - exp((self.VDtaskList[y].worstCaseHigh) * (10**(-5)) * -1))
+        self.VD_Reliability = F
+        self.VDendBool = True
+        return
+
+    def VDfind_index(self, i, k):
+        print("find index")
+        for x in range(len(self.VDQready)):
+            if ( (self.VDQready[x].i == i) and (self.VDQready[x].k == k) ):
+                return x
+        if True:
+            print("294")
+            return -1
+
+    def VDfind_next_event(self):
+        print("find next event")
+        self.VDindexOfNextRelease = argmin(self.VDnextReleaseTimes)
+        timeNextRelease = self.VDnextReleaseTimes[self.VDindexOfNextRelease]
+        timeNextEnd = self.VDcpu.find_end_of_currentTask()
+        self.VDtimeNextEvent = min(timeNextRelease, timeNextEnd, self.ENDTIME)
+        if self.VDtimeNextEvent == self.ENDTIME:
+            self.VDtypeOfNextEvent = "END SIMULATION"
+
+        elif self.VDtimeNextEvent == timeNextEnd:
+            self.VDtypeOfNextEvent = "END TASK"
+
+        elif self.VDtimeNextEvent == timeNextRelease:
+            self.VDtypeOfNextEvent = "RELEASE TASK"
+        return
+
+    def VDfind_k_of_task_with_i(self, i):
+        print("find k")
+        kMax = 0
+        for x in range(len(self.VDtaskList)):
+            if self.VDtaskList[x].i == i:
+                if kMax < self.VDtaskList[x].k:
+                    kMax = self.VDtaskList[x].k
+        if kMax == 0:
+            print("Definitly kill yourself.")
+        return kMax
+
+    def VDoperate_next_release(self):
+        print("operate next release")
+        taskToRelease = self.taskList[self.VDindexOfNextRelease]
+        k = self.VDfind_k_of_task_with_i(taskToRelease.i)
+        k += 1
+        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHigh, taskToRelease.taskName,taskToRelease.i, taskToRelease.j, k, self.VDtimeNextEvent)
+        # newModifiedTasks = newTask.preprocessPT()
+        self.VDQready.append(newTask)
+        self.VDtaskList.append(newTask)
+        self.VDset_correctlydone()
+        self.VDnextReleaseTimes[self.VDindexOfNextRelease] = self.VDtimeNextEvent + self.VDtaskList[self.VDindexOfNextRelease].period 
+        self.VDcurrentTime = self.VDtimeNextEvent
+        return
+
+    def VDoperate_next_termination(self):
+        print("next termination")
+        terminatedTask = self.VDcpu.terminate_task()
+        self.VDcurrentTime = self.VDcpu.currTime
+        i = terminatedTask.i - 1
+        k = terminatedTask.k - 1 
+        # if terminatedTask.fingerPrint == False:
+        #     print("What?")
+        self.VDcorrectlyDone[i][k] = terminatedTask.fingerPrint
+        return
+
+    def VDoperate_next_event(self):
+        print("operate next event")
+        if self.VDtypeOfNextEvent == "END SIMULATION":
+            self.VD_END_SIMULATION()
+        elif self.VDtypeOfNextEvent == "END TASK":
+            self.VDoperate_next_termination()
+        elif self.VDtypeOfNextEvent == "RELEASE TASK":
+            self.VDoperate_next_release()
+        return
+
+    def VDendfunction(self):
+        print("VD_Feasibility = ", self.VD_Feasibility)
+        print("VD_Reliability = ", self.VD_Reliability)
+        # self.EDFendLog
+        return
+
+    def VDdequeue_from_Qready(self, index):
+        #self.Qready.remove(self.Qready[index])
+        print("dequeue")
+        print(self.VDQready[index].i, self.VDQready[index].k)
+        del self.VDQready[index]
+        return
+
+    def VDclearQready(self):
+        listToDrop = []
+        numFor = len(self.VDQready)
+        for i in range(len(self.VDQready)):
+            if (self.VDQready[i].rDeadline + self.VDQready[i].releaseTime) < self.VDcurrentTime:
+                listToDrop.append((self.VDQready[i].i, self.VDQready[i].k))
+        for n in range(len(listToDrop)):
+            for y in range(numFor):
+                for it in self.VDQready:
+                    try:
+                        if it.i == listToDrop[n][0] and it.k == listToDrop[n][1]:
+                            self.VDQready.remove(it)
+                    except:
+                        print("what?")
+        return
+
+    def VDset_correctlydone(self):
+        print("set correctly")
+        for it in self.VDtaskList:
+            x = 0
+            y = 0
+            iIndex =  it.i - 1
+            while( len(self.VDcorrectlyDone) < it.i):
+                self.VDcorrectlyDone.append([])
+                x += 1
+                if x == 2:
+                    print("What x?")
+            while( len(self.VDcorrectlyDone[iIndex]) < it.k):
+                self.VDcorrectlyDone[iIndex].append(False)
+                y += 1
+                # if y == 1:
+                #     print("???")
+                if y == 2:
+                    print("What y?")
+        return
+
+    def VDgo_until_correct_time(self):
+        print("go until")
+        self.VDfind_next_event()
+        if self.VDtypeOfNextEvent == "END SIMULATION":
+            self.VDoperate_next_event()
+            return
+        if self.VDcurrentTime == self.ENDTIME:
+            print("EASY TIGER!")
+        print(self.VDcurrentTime)
+        while self.VDtypeOfNextEvent == "RELEASE TASK": # TODO
+            self.VDoperate_next_event()
+            self.VDfind_next_event()
+        if self.VDfind_next_event == "END SIMULATION":
+            self.VDoperate_next_event()
+            return
+        self.VDoperate_next_event()
+        return
 
     def simulate_Slice_EDF_VD(self):
         self.modifiedTaskList = []
@@ -397,7 +595,6 @@ class Simulation: # TODO: Rename the class!
             self.clearQready()
             for i in range(len(self.Qready)):
                 self.VDs.append(self.Qready[i].virtualDeadline)
-  
             if self.cpu.state == 'idle' and len(self.Qready) != 0:
                 indexMinVD = argmin(self.VDs)
                 taskToOperate = self.Qready[indexMinVD]
@@ -460,8 +657,8 @@ class Simulation: # TODO: Rename the class!
         return
 
     def endfunction(self):
-        print(self.Feasibility)
-        print(self.Reliability)
+        print("Slice Feasibility = ", self.Feasibility)
+        print("Slice Reliability = ", self.Reliability)
         self.endLog()
         return
 
@@ -549,7 +746,7 @@ class Simulation: # TODO: Rename the class!
         return True
 
     def END_SIMULATION(self):
-        print("end")
+        print("Slice end")
         M = 0
         TotalNum = 0
         for i in range(len(self.correctlyDone)):
