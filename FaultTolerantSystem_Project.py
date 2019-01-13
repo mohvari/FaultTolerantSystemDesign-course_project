@@ -153,7 +153,7 @@ class Simulation: # TODO: Rename the class!
         self.ENDTIME =  10000#self.H # TODO: * self.numOfSimulationPeriods
 
         startSlice = datetime.now()
-        self.simulate_Slice_EDF_VD()
+        # self.simulate_Slice_EDF_VD()
         endSlice = datetime.now()
         sliceDuration = endSlice - startSlice
 
@@ -171,7 +171,196 @@ class Simulation: # TODO: Rename the class!
 
         
     def simulate_EDF(self):
-        pass
+        self.taskListEDF = []
+        self.EDFtaskList = deepcopy(self.taskList)
+        self.EDFQready = deepcopy(self.EDFtaskList)
+        self.EDFnextReleaseTimes = []
+        for i in range(self.taskNum):
+            self.EDFnextReleaseTimes.append(self.taskList[i].period)
+        self.EDFcurrentTime = 0
+        self.EDFcpu = CPU()
+        self.EDFindexOfNextRelease = 0
+        self.EDFtimeNextEvent = 0
+        self.EDFtypeOfNextEvent = ""
+        self.EDFcorrectlyDone = [[] for i in range(self.taskNum)]
+        self.EDFendBool = False
+        self.EDFset_correctlydone()
+        self.EDFdeadlines = []
+        while(True):
+            if self.EDFendBool == True:
+                break
+            self.EDFdeadlines[:] = []
+            self.EDFclearQready()
+            for i in range(len(self.EDFQready)):
+                self.EDFdeadlines.append(self.EDFQready[i].rDeadline + self.EDFQready[i].releaseTime)
+            if self.EDFcpu.state == 'idle' and len(self.EDFQready) != 0:
+                indexMinDeadLine = argmin(self.EDFdeadlines)
+                taskToOperate = self.EDFQready[indexMinDeadLine]
+                index = self.EDFfind_index(taskToOperate.i, taskToOperate.k)
+                self.EDFcpu.do_task(self.EDFQready[index], self.EDFcurrentTime)
+                self.EDFdequeue_from_Qready(index)
+                self.EDFgo_until_correct_time()
+
+            self.EDFfind_next_event()
+            self.EDFoperate_next_event()
+        self.EDFendfunction()
+
+    def EDF_END_SIMULATION(self):
+        print("end")
+        M = 0
+        TotalNum = 0
+        for i in range(len(self.EDFcorrectlyDone)):
+            TotalNum += len(self.EDFcorrectlyDone[i])
+        for i in range(len(self.EDFcorrectlyDone)):
+            for k in range(len(self.EDFcorrectlyDone[i])):
+                if self.EDFcorrectlyDone[i][k] == True:
+                    M += 1
+        self.EDF_Feasibility = M / TotalNum
+        F = 1
+        for y in range(len(self.EDFtaskList)):
+            if self.EDFtaskList[y].criticality == 'High':
+                iIndex = self.EDFtaskList[y].i - 1
+                kIndex = self.EDFtaskList[y].k - 1
+                if self.EDFcorrectlyDone[iIndex][kIndex] == True:
+                    # TODO: for y in range(self.taskList[i].numOfExecution): /self.taskList[i].numOfExecution IS IT RIGHT?
+                    F *= 1 - (1 - exp((self.EDFtaskList[y].worstCaseHigh) * (10**(-5)) * -1))
+        self.Reliability = F
+        self.EDFendBool = True
+        return
+
+    def EDFfind_index(self, i, k):
+        print("find index")
+        for x in range(len(self.EDFQready)):
+            if ( (self.EDFQready[x].i == i) and (self.EDFQready[x].k == k) ):
+                return x
+        if True:
+            print("294")
+            return -1
+
+    def EDFfind_next_event(self):
+        print("find next event")
+        self.EDFindexOfNextRelease = argmin(self.EDFnextReleaseTimes)
+        timeNextRelease = self.EDFnextReleaseTimes[self.EDFindexOfNextRelease]
+        timeNextEnd = self.EDFcpu.find_end_of_currentTask()
+        self.EDFtimeNextEvent = min(timeNextRelease, timeNextEnd, self.ENDTIME)
+        if self.EDFtimeNextEvent == self.ENDTIME:
+            self.EDFtypeOfNextEvent = "END SIMULATION"
+
+        elif self.EDFtimeNextEvent == timeNextEnd:
+            self.EDFtypeOfNextEvent = "END TASK"
+
+        elif self.EDFtimeNextEvent == timeNextRelease:
+            self.EDFtypeOfNextEvent = "RELEASE TASK"
+        return
+
+    def EDFfind_k_of_task_with_i(self, i):
+        print("find k")
+        kMax = 0
+        for x in range(len(self.EDFtaskList)):
+            if self.EDFtaskList[x].i == i:
+                if kMax < self.EDFtaskList[x].k:
+                    kMax = self.EDFtaskList[x].k
+        if kMax == 0:
+            print("Definitly kill yourself.")
+        return kMax
+
+    def EDFoperate_next_release(self):
+        print("operate next release")
+        taskToRelease = self.taskList[self.EDFindexOfNextRelease]
+        k = self.EDFfind_k_of_task_with_i(taskToRelease.i)
+        k += 1
+        newTask = Task(taskToRelease.period, taskToRelease.rDeadline, taskToRelease.numOfTolerance, taskToRelease.numOfExecution, taskToRelease.criticality, taskToRelease.worstCaseLow, taskToRelease.worstCaseHigh, taskToRelease.taskName,taskToRelease.i, taskToRelease.j, k, self.EDFtimeNextEvent)
+        # newModifiedTasks = newTask.preprocessPT()
+        self.EDFQready.append(newTask)
+        self.EDFtaskList.append(newTask)
+        self.EDFset_correctlydone()
+        self.EDFnextReleaseTimes[self.EDFindexOfNextRelease] = self.EDFtimeNextEvent + self.EDFtaskList[self.EDFindexOfNextRelease].period 
+        self.EDFcurrentTime = self.EDFtimeNextEvent
+        return
+    def EDFoperate_next_termination(self):
+        print("next termination")
+        terminatedTask = self.EDFcpu.terminate_task()
+        self.EDFcurrentTime = self.EDFcpu.currTime
+        i = terminatedTask.i - 1
+        k = terminatedTask.k - 1 
+        # if terminatedTask.fingerPrint == False:
+        #     print("What?")
+        self.EDFcorrectlyDone[i][k] = terminatedTask.fingerPrint
+        return
+
+    def EDFoperate_next_event(self):
+        print("operate next event")
+        if self.EDFtypeOfNextEvent == "END SIMULATION":
+            self.EDF_END_SIMULATION()
+        elif self.EDFtypeOfNextEvent == "END TASK":
+            self.EDFoperate_next_termination()
+        elif self.EDFtypeOfNextEvent == "RELEASE TASK":
+            self.EDFoperate_next_release()
+        return
+
+    def EDFendfunction(self):
+        print(self.EDF_Feasibility)
+        print(self.Reliability)
+        # self.EDFendLog
+        return
+
+    def EDFdequeue_from_Qready(self, index):
+        #self.Qready.remove(self.Qready[index])
+        print("dequeue")
+        print(self.EDFQready[index].i, self.EDFQready[index].k)
+        del self.EDFQready[index]
+        return
+
+    def EDFclearQready(self):
+        listToDrop = []
+        numFor = len(self.EDFQready)
+        for i in range(len(self.EDFQready)):
+            if (self.EDFQready[i].rDeadline + self.EDFQready[i].releaseTime) < self.EDFcurrentTime:
+                listToDrop.append((self.EDFQready[i].i, self.EDFQready[i].k))
+        for n in range(len(listToDrop)):
+            for y in range(numFor):
+                for it in self.EDFQready:
+                    try:
+                        if it.i == listToDrop[n][0] and it.k == listToDrop[n][1]:
+                            self.EDFQready.remove(it)
+                    except:
+                        print("what?")
+        return
+
+    def EDFset_correctlydone(self):
+        print("set correctly")
+        for it in self.EDFtaskList:
+            x = 0
+            y = 0
+            iIndex =  it.i - 1
+            while( len(self.EDFcorrectlyDone) < it.i):
+                self.EDFcorrectlyDone.append([])
+                x += 1
+                if x == 2:
+                    print("What x?")
+            while( len(self.EDFcorrectlyDone[iIndex]) < it.k):
+                self.EDFcorrectlyDone[iIndex].append(False)
+                y += 1
+                # if y == 1:
+                #     print("???")
+                if y == 2:
+                    print("What y?")
+        return
+
+    def EDFgo_until_correct_time(self):
+        print("go until")
+        self.EDFfind_next_event()
+        if self.EDFtypeOfNextEvent == "END SIMULATION":
+            self.EDFoperate_next_event()
+            return
+        if self.EDFcurrentTime == self.ENDTIME:
+            print("EASY TIGER!")
+        print(self.EDFcurrentTime)
+        while self.EDFtypeOfNextEvent != "END TASK":
+            self.EDFoperate_next_event()
+            self.EDFfind_next_event()
+        self.EDFoperate_next_event()
+        return
 
     def simulate_EDF_VD(self):
         pass
@@ -261,7 +450,7 @@ class Simulation: # TODO: Rename the class!
         numFor = len(self.Qready)
         for i in range(len(self.Qready)):
             if self.Qready[i].virtualDeadline < 0:
-                listToDrop.append(self.Qready[i].i, self.Qready[i].k)
+                listToDrop.append((self.Qready[i].i, self.Qready[i].k))
         for n in range(len(listToDrop)):
             for y in range(numFor):
                 for m in range(len(self.Qready)):
@@ -274,6 +463,8 @@ class Simulation: # TODO: Rename the class!
         print(self.Feasibility)
         print(self.Reliability)
         self.endLog()
+        return
+
     def dequeue_from_Qready(self, index):
         #self.Qready.remove(self.Qready[index])
         print("dequeue")
@@ -357,7 +548,7 @@ class Simulation: # TODO: Rename the class!
                 return False
         return True
 
-    def END_SIMULATION(self, type):
+    def END_SIMULATION(self):
         print("end")
         M = 0
         TotalNum = 0
@@ -437,15 +628,15 @@ class Simulation: # TODO: Rename the class!
         i = terminatedTask.i - 1
         k = terminatedTask.k - 1 
         j = terminatedTask.j - 1
-        if terminatedTask.fingerPrint == False:
-            print("What?")
+        # if terminatedTask.fingerPrint == False:
+        #     print("What?")
         self.fingerPrints[i][k][j] = terminatedTask.fingerPrint
         return
 
     def operate_next_event(self):
         print("operate next event")
         if self.typeOfNextEvent == "END SIMULATION":
-            self.END_SIMULATION("Slice EDF_VD")
+            self.END_SIMULATION()
         elif self.typeOfNextEvent == "END TASK":
             self.operate_next_termination()
         elif self.typeOfNextEvent == "RELEASE TASK":
@@ -616,7 +807,7 @@ if __name__ == "__main__":
     sizeImportance = False
     numOfSimulationPeriods = 5
     mySimulation = Simulation(numOfTolerance, pH, rH, cLoMax, tMax, uStar, errorVal, sizeImportance, taskNumShouldBe, numOfSimulationPeriods)
-    mySimulation.empty_log()
-    mySimulation.tasksLog(False)
-    mySimulation.tasksLog(True)
+    # mySimulation.empty_log()
+    # mySimulation.tasksLog(False)
+    # mySimulation.tasksLog(True)
     print(mySimulation.uAverage)
